@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기억력 천재! 궁극의 카드 뒤집기 게임</title>
+  <style>
+    /* 1. 디자인 시스템 & 배경 (종이 공예 & 스크랩북 스타일) */
+    :root {
+      --bg-color: #f4efe6;
+      --grid-color: #e2dacb;
+      --card-back: #e76f51;
+      --card-front: #ffffff;
+      --text-color: #2b2d42;
+      --border-style: 3px solid #2b2d42;
+      --shadow-style: 4px 4px 0px #2b2d42;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      /* 격자 종이 질감 패턴 */
+      background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* 2. 대시보드 메인 레이아웃 크기 고정 */
+    .game-container {
+      width: 100%;
+      max-width: 580px;
+      background: #fff;
+      border: var(--border-style);
+      box-shadow: var(--shadow-style);
+      padding: 25px;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    /* 화면 흔들림 효과를 위해 컨테이너에 애니메이션 연결 */
+    .game-container.shake {
+      animation: shakeEffect 0.4s ease-in-out;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      text-shadow: 2px 2px 0px #ffddd2;
+    }
+
+    /* 3. 설정 컨트롤 패널 (난이도, 모드, 최고기록) */
+    .control-panel {
+      background: #f8f9fa;
+      border: 2px solid var(--text-color);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .select-group {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      font-weight: bold;
+    }
+
+    select {
+      padding: 5px 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border: 2px solid var(--text-color);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .best-record {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #1d3557;
+      background: #e6394622;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px dashed #e63946;
+    }
+
+    /* 4. 상태 표시 HUD 및 게이지 바 */
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .combo-badge {
+      background: #e63946;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      display: none;
+      animation: bounce 0.3s ease infinite alternate;
+    }
+
+    .timer-container {
+      width: 100%;
+      height: 18px;
+      background: #eee;
+      border: var(--border-style);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .timer-bar {
+      width: 100%;
+      height: 100%;
+      background: #2a9d8f;
+      transition: width 0.1s linear, background-color 0.5s;
+    }
+
+    /* 5. 동적 카드 보드 그리드 레이아웃 */
+    .grid {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* 가변 그리드 클래스 설정을 위한 CSS */
+    .grid.grid-12 { grid-template-columns: repeat(4, 1fr); }
+    .grid.grid-16 { grid-template-columns: repeat(4, 1fr); }
+    .grid.grid-20 { grid-template-columns: repeat(5, 1fr); }
+
+    /* 6. 3D 카드 애니메이션 구조 */
+    .card {
+      aspect-ratio: 1 / 1;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transform-style: preserve-3d;
+    }
+
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: var(--border-style);
+      box-shadow: 2px 2px 0px #2b2d42;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+
+    /* 난이도/글자 크기 자동 대응을 위한 폰트 스케일링 */
+    .card-front {
+      background-color: var(--card-front);
+      transform: rotateY(180deg);
+      font-size: calc(1.2rem + 1vw);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .card-back {
+      background-color: var(--card-back);
+      color: white;
+      font-size: 1.8rem;
+    }
+
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* 정답 시 번쩍이는 황금빛 히트 플래시 */
+    .card.matched .card-inner .card-front {
+      background-color: #e9c46a;
+      animation: hitFlash 0.5s ease-out forwards;
+    }
+
+    /* 7. 네오 브루탈리즘 키캡 스타일 버튼 */
+    .btn-container {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      background-color: #457b9d;
+      color: white;
+      border: var(--border-style);
+      box-shadow: var(--shadow-style);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0px #2b2d42;
+    }
+
+    .btn:disabled {
+      background-color: #ccc;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #hint-btn {
+      background-color: #2a9d8f;
+    }
+
+    /* 8. 결과 오버레이 화면 */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(244, 239, 230, 0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 4px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay h2 {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .overlay p {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      font-weight: bold;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    /* 9. 애니메이션 키프레임 정의 */
+    @keyframes shakeEffect {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    @keyframes hitFlash {
+      0% { filter: brightness(1); transform: scale(1) rotateY(180deg); }
+      30% { filter: brightness(1.8); transform: scale(1.1) rotateY(180deg); }
+      100% { filter: brightness(1); transform: scale(1) rotateY(180deg); background-color: #e9c46a; }
+    }
+
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-5px); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container" id="game-container">
+    <div class="overlay" id="overlay">
+      <h2 id="overlay-title">성공! 🎉</h2>
+      <p id="overlay-msg">기록 처리 중...</p>
+      <button class="btn" id="restart-btn" style="flex:none; width: auto; padding: 12px 35px;">다시 시작하기</button>
+    </div>
+
+    <header>
+      <h1>🧠 기억력 천재 마스터 퍼즐</h1>
+    </header>
+
+    <div class="control-panel">
+      <div class="select-group">
+        <label for="difficulty-select">난이도:</label>
+        <select id="difficulty-select">
+          <option value="easy">쉬움 (12장)</option>
+          <option value="normal" selected>보통 (16장)</option>
+          <option value="hard">아주 어려움 (20장)</option>
+        </select>
+      </div>
+
+      <div class="select-group">
+        <label for="mode-select">모드:</label>
+        <select id="mode-select">
+          <option value="emoji" selected>이모지 모드</option>
+          <option value="word">영어 단어 모드</option>
+        </select>
+      </div>
+
+      <div class="best-record" id="best-record-text">
+        🏆 최고 기록: 없음
+      </div>
+    </div>
+
+    <div class="info-bar">
+      <div>점수: <span id="score-text">0</span> / <span id="max-score-text">8</span></div>
+      <div class="combo-badge" id="combo-badge">0 콤보 🔥</div>
+      <div>시간: <span id="time-text">45</span>초</div>
+    </div>
+
+    <div class="timer-container">
+      <div class="timer-bar" id="timer-bar"></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="btn-container">
+      <button class="btn" id="hint-btn">찬스: 전체 힌트 보기 (1회)</button>
+    </div>
+  </div>
+
+  <script>
+    // --- 1. 테마별 정적 에셋 풀 데이터 설계 ---
+    const emojiPool = ['🐶', '🐱', '🦊', '🦁', '🐸', '🐷', '🐵', '🐔', '🐻', '🐼'];
+    const wordPool = ['DOG', 'CAT', 'FOX', 'LION', 'FROG', 'PIG', 'MONKEY', 'COCK', 'BEAR', 'PANDA'];
+
+    // 난이도별 설정값 규격 정의
+    const config = {
+      easy: { cardsCount: 12, timeLimit: 60, gridClass: 'grid-12' },
+      normal: { cardsCount: 16, timeLimit: 45, gridClass: 'grid-16' },
+      hard: { cardsCount: 20, timeLimit: 30, gridClass: 'grid-20' }
+    };
+
+    // --- 2. 게임 상태 데이터 변수 선언 ---
+    let currentDifficulty = 'normal';
+    let currentMode = 'emoji';
+    let cardDeck = [];
+    let flippedCards = [];
+    let matchedCount = 0;
+    let score = 0;
+    let timeLeft = 45;
+    let totalLimitTime = 45;
+    let comboCount = 0;
+    let isLock = false;
+    let hintUsed = false;
+    let timerInterval = null;
+
+    // DOM 요소 바인딩 캐싱
+    const gameContainer = document.getElementById('game-container');
+    const grid = document.getElementById('grid');
+    const scoreText = document.getElementById('score-text');
+    const maxScoreText = document.getElementById('max-score-text');
+    const timeText = document.getElementById('time-text');
+    const timerBar = document.getElementById('timer-bar');
+    const comboBadge = document.getElementById('combo-badge');
+    const bestRecordText = document.getElementById('best-record-text');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlayMsg = document.getElementById('overlay-msg');
+    
+    const difficultySelect = document.getElementById('difficulty-select');
+    const modeSelect = document.getElementById('mode-select');
+    const hintBtn = document.getElementById('hint-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    // --- 3. 핵심 게임 구동 함수 ---
+    function initGame() {
+      // 선택된 최신 설정 동적 반영
+      currentDifficulty = difficultySelect.value;
+      currentMode = modeSelect.value;
+      
+      const setting = config[currentDifficulty];
+      totalLimitTime = setting.timeLimit;
+      timeLeft = totalLimitTime;
+      
+      // 상태 데이터 완전 리셋
+      flippedCards = [];
+      matchedCount = 0;
+      score = 0;
+      comboCount = 0;
+      isLock = false;
+      hintUsed = false;
+
+      // HUD 텍스트 인터페이스 동적 변경
+      scoreText.textContent = '0';
+      maxScoreText.textContent = (setting.cardsCount / 2).toString();
+      timeText.textContent = timeLeft;
+      comboBadge.style.display = 'none';
+      
+      // 타이머 비주얼 초기화
+      timerBar.style.width = '100%';
+      timerBar.style.backgroundColor = '#2a9d8f';
+      
+      // 힌트 찬스 버튼 활성화 복구
+      hintBtn.disabled = false;
+      hintBtn.style.opacity = '1';
+      overlay.classList.remove('active');
+
+      // 로컬스토리지 연동 최고 기록 갱신 호출
+      showBestRecord();
+
+      // 소스 풀 결정 후 자르기 및 더블 카드 덱 편성
+      const sourcePool = (currentMode === 'emoji') ? emojiPool : wordPool;
+      const selectedAssets = sourcePool.slice(0, setting.cardsCount / 2);
+      cardDeck = [...selectedAssets, ...selectedAssets];
+
+      // 무작위 정렬 랜덤 셔플 알고리즘
+      cardDeck.sort(() => Math.random() - 0.5);
+
+      // DOM 생성 가이드라인을 준수한 카드 격자 보드 구성
+      grid.className = `grid ${setting.gridClass}`;
+      grid.innerHTML = '';
+      cardDeck.forEach((content, index) => {
+        const cardElement = createCardNode(content, index);
+        grid.appendChild(cardElement);
+      });
+
+      // 단일 인터벌 타이머 시동
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // --- 4. 카드 요소 노드 동적 생성 절차 ---
+    function createCardNode(content, index) {
+      const card = document.createElement('div');
+      card.classList.add('card');
+      card.dataset.content = content;
+      card.dataset.index = index;
+
+      const inner = document.createElement('div');
+      inner.classList.add('card-inner');
+
+      const front = document.createElement('div');
+      front.classList.add('card-front');
+      front.textContent = content;
+      
+      // 단어 모드일 때 영어 텍스트 길이에 맞춰 폰트 사이즈 보정 조절
+      if (currentMode === 'word') {
+        front.style.fontSize = 'calc(0.7rem + 1vw)';
+      }
+
+      const back = document.createElement('div');
+      back.classList.add('card-back');
+      back.textContent = '❓';
+
+      inner.appendChild(front);
+      inner.appendChild(back);
+      card.appendChild(inner);
+
+      // 이벤트 단일 결합 바인딩
+      card.addEventListener('click', () => handleCardFlip(card));
+
+      return card;
+    }
+
+    // --- 5. 카드 뒤집기 매칭 액션 핸들러 ---
+    function handleCardFlip(card) {
+      if (isLock || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+      card.classList.add('flipped');
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        evaluateCardMatch();
+      }
+    }
+
+    // --- 6. 정답 및 오답 분기 처리 판정문 ---
+    function evaluateCardMatch() {
+      isLock = true;
+      const [card1, card2] = flippedCards;
+
+      if (card1.dataset.content === card2.dataset.content) {
+        // [정답 로직]
+        setTimeout(() => {
+          card1.classList.add('matched');
+          card2.classList.add('matched');
+
+          matchedCount++;
+          score = matchedCount;
+          scoreText.textContent = score;
+
+          // 콤보 시스템 작동
+          comboCount++;
+          if (comboCount >= 2) {
+            comboBadge.textContent = `${comboCount} 콤보 🔥`;
+            comboBadge.style.display = 'block';
+            // 보너스 시간 3초 추가 및 한계치 가이드 방어
+            timeLeft = Math.min(timeLeft + 3, totalLimitTime);
+            timeText.textContent = timeLeft;
+          }
+
+          flippedCards = [];
+          isLock = false;
+
+          // 올 매칭 최종 성공 여부 판단 검사
+          if (matchedCount === cardDeck.length / 2) {
+            processGameEnd(true);
+          }
+        }, 400);
+      } else {
+        // [오답 로직]
+        setTimeout(() => {
+          // 시각적 피드백 효과 1: 전체 컨테이너 화면 흔들기 촉발
+          gameContainer.classList.add('shake');
+          setTimeout(() => gameContainer.classList.remove('shake'), 400);
+
+          // 카드 원상 복구 차단 해제
+          card1.classList.remove('flipped');
+          card2.classList.remove('flipped');
+
+          // 오답으로 인한 연속 콤보 즉시 초기화
+          comboCount = 0;
+          comboBadge.style.display = 'none';
+
+          flippedCards = [];
+          isLock = false;
+        }, 800);
+      }
+    }
+
+    // --- 7. 주기적 시간 동기화 타이머 루프 관리 ---
+    function updateTimer() {
+      timeLeft--;
+      timeText.textContent = timeLeft;
+
+      const percent = (timeLeft / totalLimitTime) * 100;
+      timerBar.style.width = `${percent}%`;
+
+      // 10초 미만 돌입 시 긴급 위험 상태 시각 연출 전환
+      if (timeLeft <= 10) {
+        timerBar.style.backgroundColor = '#e63946';
+      }
+
+      if (timeLeft <= 0) {
+        processGameEnd(false);
+      }
+    }
+
+    // --- 8. 힌트 찬스 액션 처리 기능 ---
+    function triggerHintChance() {
+      if (hintUsed || isLock) return;
+      hintUsed = true;
+      isLock = true;
+
+      hintBtn.disabled = true;
+      hintBtn.style.opacity = '0.4';
+
+      const allCards = document.querySelectorAll('.card');
+      // 전격 오픈 애니메이션 가동
+      allCards.forEach(card => card.classList.add('flipped'));
+
+      // 1.2초 노출 시간 유지 후 정상 미완료 타일만 클로즈 연출
+      setTimeout(() => {
+        allCards.forEach(card => {
+          if (!card.classList.contains('matched')) {
+            card.classList.remove('flipped');
+          }
+        });
+        isLock = false;
+      }, 1200);
+    }
+
+    // --- 9. 로컬스토리지 저장소 최고 데이터 연동 핸들러 ---
+    function showBestRecord() {
+      // 난이도 및 모드명이 유일한 결합 키가 되도록 작명 규칙 통일
+      const recordKey = `best_${currentDifficulty}_${currentMode}`;
+      const savedRecord = localStorage.getItem(recordKey);
+
+      if (savedRecord) {
+        bestRecordText.textContent = `🏆 최고 기록: ${savedRecord}초 남김`;
+      } else {
+        bestRecordText.textContent = `🏆 최고 기록: 없음`;
+      }
+    }
+
+    function saveBestRecord(clearTimeLeft) {
+      const recordKey = `best_${currentDifficulty}_${currentMode}`;
+      const savedRecord = localStorage.getItem(recordKey);
+
+      // 제한 시간이 많이 남을수록 실력이 우수한 것이므로 큰 숫자일 때 세이브 진행
+      if (!savedRecord || clearTimeLeft > parseInt(savedRecord)) {
+        localStorage.setItem(recordKey, clearTimeLeft);
+        return true; // 최고 신기록 달성 성공 알림 flag 반환
+      }
+      return false;
+    }
+
+    // --- 10. 최종 게임 결과 종합 마무리 상태 전환 ---
+    function processGameEnd(isSuccess) {
+      clearInterval(timerInterval);
+
+      if (isSuccess) {
+        overlayTitle.textContent = '미션 클리어! 🎉';
+        const isNewRecord = saveBestRecord(timeLeft);
+        
+        if (isNewRecord) {
+          overlayMsg.innerHTML = `🔥 최고 신기록 경신! 🔥<br>무려 <strong>${timeLeft}초</strong>를 남겨두고 성공했습니다!`;
+        } else {
+          overlayMsg.textContent = `${totalLimitTime - timeLeft}초 만에 모든 이모지 매칭에 성공했습니다!`;
+        }
+      } else {
+        overlayTitle.textContent = '타임 오버! 😭';
+        overlayMsg.textContent = '제한 시간이 모두 소모되었습니다. 집중력을 높여 다시 도전해 보세요!';
+      }
+
+      overlay.classList.add('active');
+    }
+
+    // --- 11. 인터페이스 리스너 연결 조립 초기 설정 ---
+    difficultySelect.addEventListener('change', initGame);
+    modeSelect.addEventListener('change', initGame);
+    hintBtn.addEventListener('click', triggerHintChance);
+    restartBtn.addEventListener('click', initGame);
+
+    // 웹 문서 초기 진입 시 최초 1회 게임 엔진 실행
+    window.onload = initGame;
+  </script>
+</body>
+</html>
